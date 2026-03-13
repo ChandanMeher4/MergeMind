@@ -23,6 +23,7 @@ export async function initMcpClients() {
     const transport = new StdioClientTransport({
       command: "node",
       args: [scriptPath],
+      env: { ...process.env },
     });
 
     const client = new Client(
