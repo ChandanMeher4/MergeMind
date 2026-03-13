@@ -13,7 +13,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'mergemind-super-secret-key-123';
 
 // Step 1: Redirect user to GitHub OAuth login
 router.get('/login', (req, res) => {
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+  const backendUrl = (process.env.BACKEND_URL || 'http://localhost:3000').replace(/\/$/, '');
   const redirectUri = `${backendUrl}/auth/github/callback`;
   const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${redirectUri}&scope=repo`;
   
