@@ -4,7 +4,7 @@ import { GitPullRequest, Loader2, GitBranch, CheckCircle2, AlertTriangle, Info, 
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '');
 
 export default function Dashboard() {
   // connection state

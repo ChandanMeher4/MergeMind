@@ -4,7 +4,7 @@ import { FileCode2, History, AlertCircle, ChevronRight, Search, Filter } from 'l
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  baseURL: (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, ''),
 });
 
 // Using same fadeUp as TeamHealth
