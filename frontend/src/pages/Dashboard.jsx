@@ -241,7 +241,7 @@ export default function Dashboard() {
                  <h3 className="font-semibold mb-2">Authentication Required</h3>
                  <p className="text-sm text-text-muted mb-4">Connect your GitHub account to access your repositories and trigger reviews.</p>
                  <a 
-                   href="http://localhost:3000/auth/github/login"
+                   href={`${API_BASE}/auth/github/login`}
                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-black font-semibold hover:bg-white/90 transition-all shadow-lg"
                  >
                     Sign in with GitHub
