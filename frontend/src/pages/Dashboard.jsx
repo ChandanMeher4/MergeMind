@@ -183,7 +183,7 @@ export default function Dashboard() {
   };
 
   const copyWebhookUrl = () => {
-    const webhookUrl = import.meta.env.VITE_WEBHOOK_URL || 'https://mirna-uncrated-autodidactically.ngrok-free.dev/webhook';
+    const webhookUrl = import.meta.env.VITE_WEBHOOK_URL || `${API_BASE}/webhook`;
     navigator.clipboard.writeText(webhookUrl);
     alert('Webhook URL copied to clipboard');
   };
@@ -319,7 +319,7 @@ export default function Dashboard() {
               <span>Your Endpoint:</span>
             </div>
             <div className="flex items-center justify-between bg-surface border border-white/10 p-2.5 rounded-lg font-mono text-xs overflow-hidden group">
-               <span className="truncate text-primary-hover mr-2">https://mirna-uncrated-autodidactically.ngrok-free.dev/webhook</span>
+               <span className="truncate text-primary-hover mr-2">{import.meta.env.VITE_WEBHOOK_URL || `${API_BASE}/webhook`}</span>
                <button onClick={copyWebhookUrl} className="shrink-0 p-1.5 hover:bg-white/5 rounded text-text-muted hover:text-white transition-colors">
                  <Copy className="w-3.5 h-3.5" />
                </button>

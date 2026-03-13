@@ -45,6 +45,9 @@ app.use("/auth/github", authRouter);
 app.use("/api", apiRouter);
 
 // Alias for the webhook
+app.get("/webhook", (req, res) => {
+  res.send("Webhook endpoint is active. Use POST to trigger reviews.");
+});
 app.post("/webhook", handlePRWebhook);
 
 
