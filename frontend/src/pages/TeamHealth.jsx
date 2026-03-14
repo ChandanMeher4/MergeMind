@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   TrendingUp, Shield, Clock, Bug, Zap, Code2, TestTube, BookOpen,
@@ -52,17 +53,30 @@ const fadeUp = {
 };
 
 export default function TeamHealth() {
+  const navigate = useNavigate();
   const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '');
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const token = localStorage.getItem('mergemind_token');
 
   useEffect(() => {
+    if (!token) {
+      navigate('/dashboard');
+      return;
+    }
+
     const fetchStats = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/api/stats`);
+        const res = await axios.get(`${API_BASE}/api/stats`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         setStats(res.data);
       } catch (err) {
         console.error('Failed to load stats:', err);
+        if (err.response?.status === 401) {
+          localStorage.removeItem('mergemind_token');
+          navigate('/dashboard');
+        }
       } finally {
         setLoading(false);
       }
@@ -71,7 +85,7 @@ export default function TeamHealth() {
     fetchStats();
     const interval = setInterval(fetchStats, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [token, navigate, API_BASE]);
 
   if (loading) {
     return (

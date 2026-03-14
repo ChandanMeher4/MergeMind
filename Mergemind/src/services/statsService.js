@@ -4,8 +4,9 @@ const reviewHistory = [];
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
-export function recordReview({ repo, prNumber, issues, reviewedAt, tokenReport }) {
+export function recordReview({ repo, prNumber, issues, reviewedAt, tokenReport }, userId) {
   reviewHistory.push({
+    userId,
     repo,
     prNumber,
     issues: Array.isArray(issues) ? issues : [],
@@ -14,9 +15,10 @@ export function recordReview({ repo, prNumber, issues, reviewedAt, tokenReport }
   });
 }
 
-export function getStats() {
-  const totalPRs = reviewHistory.length;
-  const allIssues = reviewHistory.flatMap((r) => r.issues);
+export function getStats(userId) {
+  const userHistory = userId ? reviewHistory.filter(r => r.userId == userId) : [];
+  const totalPRs = userHistory.length;
+  const allIssues = userHistory.flatMap((r) => r.issues);
   const totalIssues = allIssues.length;
 
   // Severity breakdown
@@ -47,7 +49,7 @@ export function getStats() {
   let totalOutputTokens = 0;
   let totalCost = 0;
 
-  reviewHistory.forEach(r => {
+  userHistory.forEach(r => {
     if (r.tokenReport) {
       totalInputTokens += r.tokenReport.total?.input || 0;
       totalOutputTokens += r.tokenReport.total?.output || 0;
@@ -64,7 +66,7 @@ export function getStats() {
     dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(dayStart.getTime() + DAY);
 
-    const dayReviews = reviewHistory.filter((r) => {
+    const dayReviews = userHistory.filter((r) => {
       const t = new Date(r.reviewedAt).getTime();
       return t >= dayStart.getTime() && t < dayEnd.getTime();
     });
@@ -81,7 +83,7 @@ export function getStats() {
 
   // Repo leaderboard
   const repoMap = {};
-  reviewHistory.forEach((r) => {
+  userHistory.forEach((r) => {
     if (!repoMap[r.repo]) repoMap[r.repo] = { repo: r.repo, prs: 0, issues: 0, critical: 0, high: 0 };
     repoMap[r.repo].prs++;
     r.issues.forEach((i) => {
@@ -95,7 +97,7 @@ export function getStats() {
   // Today's stats
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  const todayReviews = reviewHistory.filter((r) => new Date(r.reviewedAt) >= todayStart);
+  const todayReviews = userHistory.filter((r) => new Date(r.reviewedAt) >= todayStart);
   const todayHoursSaved = parseFloat((todayReviews.length * 0.5).toFixed(1));
   const todayIssues = todayReviews.flatMap((r) => r.issues).length;
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileCode2, History, AlertCircle, ChevronRight, Search, Filter } from 'lucide-react';
 import axios from 'axios';
@@ -14,19 +15,28 @@ const fadeUp = {
 };
 
 export default function ReviewHistory() {
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReviewId, setSelectedReviewId] = useState(null);
   const [selectedReviewDetails, setSelectedReviewDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
+  const token = localStorage.getItem('mergemind_token');
+
   useEffect(() => {
+    if (!token) {
+      navigate('/dashboard');
+      return;
+    }
     fetchReviews();
-  }, []);
+  }, [token, navigate]);
 
   const fetchReviews = async () => {
     try {
-      const res = await api.get('/api/reviews');
+      const res = await api.get('/api/reviews', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setReviews(res.data);
     } catch (err) {
       console.error("Failed to fetch reviews:", err);
@@ -39,7 +49,9 @@ export default function ReviewHistory() {
     setSelectedReviewId(id);
     setLoadingDetails(true);
     try {
-      const res = await api.get(`/api/reviews/${id}`);
+      const res = await api.get(`/api/reviews/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setSelectedReviewDetails(res.data);
     } catch (err) {
       console.error("Failed to load review details:", err);

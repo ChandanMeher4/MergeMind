@@ -1,8 +1,16 @@
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { BrainCircuit, Github, CodeSquare } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { BrainCircuit, Github, CodeSquare, LogOut } from 'lucide-react';
 
 export default function Navbar() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const token = localStorage.getItem('mergemind_token');
+
+  const handleLogout = () => {
+    localStorage.removeItem('mergemind_token');
+    navigate('/');
+    window.location.reload(); // Ensure state is reset across app
+  };
   return (
     <nav className="fixed w-full z-50 top-0 pt-4 px-6 md:px-12 pointer-events-none">
       <motion.div 
@@ -43,6 +51,16 @@ export default function Navbar() {
                 Launch App
               </button>
             </Link>
+
+            {token && (
+              <button 
+                onClick={handleLogout}
+                className="p-2 rounded-full bg-white/5 border border-white/10 text-white/70 hover:bg-danger/10 hover:border-danger/50 hover:text-danger transition-all duration-200"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </motion.div>

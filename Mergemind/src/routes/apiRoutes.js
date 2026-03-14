@@ -10,22 +10,7 @@ dotenv.config();
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'mergemind-super-secret-key-123';
 
-// ── Public routes (no auth required) ───────────────────────────────────────
-router.get('/stats', (_req, res) => {
-  res.json(getStats());
-});
-
-import { getAllReviews, getReviewById } from '../services/reviewStore.js';
-
-router.get('/reviews', (_req, res) => {
-  res.json(getAllReviews());
-});
-
-router.get('/reviews/:id', (req, res) => {
-  const review = getReviewById(req.params.id);
-  if (!review) return res.status(404).json({ error: "Review not found" });
-  res.json(review);
-});
+// Routes moved below requireAuth middleware for scoping
 
 // Middleware to verify JWT and extract the internal GitHub token
 const requireAuth = (req, res, next) => {
@@ -48,6 +33,22 @@ const requireAuth = (req, res, next) => {
 
 // Protect all routes below this line
 router.use(requireAuth);
+
+router.get('/stats', (req, res) => {
+  res.json(getStats(req.user.id));
+});
+
+import { getAllReviews, getReviewById } from '../services/reviewStore.js';
+
+router.get('/reviews', (req, res) => {
+  res.json(getAllReviews(req.user.id));
+});
+
+router.get('/reviews/:id', (req, res) => {
+  const review = getReviewById(req.params.id, req.user.id);
+  if (!review) return res.status(404).json({ error: "Review not found" });
+  res.json(review);
+});
 
 // Fetch user's repositories
 router.get('/repos', async (req, res) => {
@@ -142,7 +143,7 @@ router.post('/trigger-review', async (req, res) => {
     };
     
     import('../controllers/githubController.js').then(({ handlePRWebhook }) => {
-       handlePRWebhook(mockRequest, mockResponse);
+       handlePRWebhook(mockRequest, mockResponse, req.user.id);
     });
 });
 

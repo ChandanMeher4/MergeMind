@@ -2,7 +2,7 @@ import { runPRReview } from '../mcp/client/orchestrator.js';
 import { recordReview } from "../services/statsService.js";
 import { saveReview } from "../services/reviewStore.js";
 
-export async function handlePRWebhook(req, res) {
+export async function handlePRWebhook(req, res, userId) {
   const event = req.headers["x-github-event"];
   const io = req.app.get("io"); // Access Socket.io instance
 
@@ -65,7 +65,7 @@ export async function handlePRWebhook(req, res) {
       diffText: result.diffText,
       issues: allParsed,
       tokenReport: result.tokenReport
-    });
+    }, userId);
 
     // Emit parsed reviews to dashboard
     io.emit("review-update", {
@@ -77,7 +77,7 @@ export async function handlePRWebhook(req, res) {
     });
 
     // Record stats for CTO dashboard
-    recordReview({ repo, prNumber, issues: allParsed, tokenReport: result.tokenReport });
+    recordReview({ repo, prNumber, issues: allParsed, tokenReport: result.tokenReport }, userId);
 
     io.emit("review-update", { 
       repo, 
