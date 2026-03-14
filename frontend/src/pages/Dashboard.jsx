@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GitPullRequest, Loader2, GitBranch, CheckCircle2, AlertTriangle, Info, Copy, ChevronDown, ChevronUp, Terminal } from 'lucide-react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import GlowCard from '../components/GlowCard';
 
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '');
 
@@ -190,19 +189,11 @@ export default function Dashboard() {
   };
 
   const severityColors = {
-    critical: 'text-red-400 bg-red-500/10 border-red-500/20',
-    high: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
-    medium: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
-    low: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-    suggestion: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  };
-
-  const severityGlow = {
-    critical: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]',
-    high: 'shadow-[0_0_15px_rgba(249,115,22,0.15)]',
-    medium: 'shadow-[0_0_15px_rgba(234,179,8,0.15)]',
-    low: 'shadow-[0_0_15px_rgba(59,130,246,0.15)]',
-    suggestion: 'shadow-[0_0_15px_rgba(16,185,129,0.15)]',
+    critical: 'text-red-500 bg-red-500/10 border-red-500/20',
+    high: 'text-orange-500 bg-orange-500/10 border-orange-500/20',
+    medium: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20',
+    low: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
+    suggestion: 'text-green-500 bg-green-500/10 border-green-500/20',
   };
 
   return (
@@ -214,15 +205,12 @@ export default function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-10 text-center"
       >
-        <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tighter">
-          <span className="bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">Real-time Review </span>
-          <span className="gradient-text-animated">Console</span>
-        </h1>
-        <p className="text-white/40 text-lg flex items-center justify-center gap-3">
-          Test PRs and watch MergeMind analyze them chunk-by-chunk.
-          <span className={`inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full backdrop-blur-sm ${socketConnected ? 'bg-success/10 text-success border border-success/20' : 'bg-danger/10 text-danger border border-danger/20'}`}>
+        <h1 className="text-4xl font-bold mb-4 tracking-tight">Real-time Review Console</h1>
+        <p className="text-text-muted text-lg flex items-center justify-center gap-2">
+          Test PRs and watch MergeMind analyze them chunk-by-chunk. 
+          <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${socketConnected ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
             <span className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-success animate-pulse' : 'bg-danger'}`} />
-            {socketConnected ? 'Connected' : 'Disconnected'}
+            {socketConnected ? 'Connected to Backend' : 'Disconnected'}
           </span>
         </p>
       </motion.div>
@@ -234,122 +222,109 @@ export default function Dashboard() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className="lg:col-span-1"
+          className="glass-panel p-6 rounded-3xl relative overflow-hidden flex flex-col h-fit lg:col-span-1"
         >
-          <GlowCard>
-            <div className="p-6 relative overflow-hidden flex flex-col h-fit">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -z-10" />
-              
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
-                  <GitPullRequest className="w-5 h-5" />
-                </div>
-                <h2 className="text-xl font-semibold text-white">Test Real PR</h2>
-              </div>
-              
-              <form onSubmit={handleReviewTrigger} className="flex flex-col gap-4">
-                
-                {!token ? (
-                   <div className="flex flex-col items-center justify-center p-6 bg-white/[0.03] rounded-2xl border border-white/[0.06] text-center">
-                     <GitBranch className="w-10 h-10 text-white/30 mb-3" />
-                     <h3 className="font-semibold mb-2 text-white">Authentication Required</h3>
-                     <p className="text-sm text-white/40 mb-4">Connect your GitHub account to access your repositories and trigger reviews.</p>
-                     <a 
-                       href={`${API_BASE}/auth/github/login`}
-                       className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-black font-semibold hover:bg-white/90 transition-all shadow-lg shadow-white/10"
-                     >
-                        Sign in with GitHub
-                     </a>
-                   </div>
-                ) : (
-                  <>
-                    {/* Repository Dropdown */}
-                    <div>
-                      <label className="block text-sm font-medium text-white/40 mb-1.5">Repository</label>
-                      <div className="relative">
-                        <GitBranch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-                        <select 
-                          value={selectedRepo}
-                          onChange={(e) => setSelectedRepo(e.target.value)}
-                          disabled={isLoadingRepos}
-                          className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-2.5 pl-10 pr-4 text-text focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all appearance-none cursor-pointer disabled:opacity-50 hover:border-white/[0.15]"
-                        >
-                          <option value="">Select a repository...</option>
-                          {repos.map(r => (
-                            <option key={r.id} value={r.full_name}>{r.full_name}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 pointer-events-none" />
-                        {isLoadingRepos && <Loader2 className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-primary" />}
-                      </div>
-                    </div>
-                    
-                    {/* Pull Request Dropdown */}
-                    <div>
-                      <label className="block text-sm font-medium text-white/40 mb-1.5">Pull Request</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 font-mono">#</span>
-                        <select 
-                          value={selectedPr}
-                          onChange={(e) => setSelectedPr(e.target.value)}
-                          disabled={!selectedRepo || isLoadingPulls || pulls.length === 0}
-                          className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-2.5 pl-10 pr-4 text-text focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all appearance-none cursor-pointer disabled:opacity-50 hover:border-white/[0.15]"
-                        >
-                          {pulls.length === 0 ? (
-                            <option value="">No open PRs found</option>
-                          ) : (
-                            pulls.map(pr => (
-                              <option key={pr.id} value={pr.number}>PR #{pr.number}: {pr.title.slice(0, 30)}{pr.title.length > 30 ? '...' : ''}</option>
-                            ))
-                          )}
-                        </select>
-                        <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 pointer-events-none" />
-                        {isLoadingPulls && <Loader2 className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-primary" />}
-                      </div>
-                    </div>
-                  </>
-                )}
-                
-                <motion.button 
-                  type="submit"
-                  disabled={status === 'loading' || !token || !selectedRepo || !selectedPr}
-                  className="mt-2 w-full relative flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white disabled:bg-white/[0.06] disabled:text-white/30 py-3 rounded-xl font-medium transition-all duration-300 overflow-hidden group disabled:shadow-none"
-                  whileHover={{ scale: status !== 'loading' ? 1.02 : 1 }}
-                  whileTap={{ scale: 0.98 }}
-                  style={{
-                    boxShadow: (status !== 'loading' && token && selectedRepo && selectedPr) 
-                      ? '0 0 20px rgba(79,70,229,0.3)' 
-                      : 'none',
-                  }}
-                >
-                  {/* Shimmer */}
-                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                  {status === 'loading' ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin relative z-10" />
-                      <span className="relative z-10">Reviewing...</span>
-                    </>
-                  ) : (
-                    <span className="relative z-10">Trigger Analysis</span>
-                  )}
-                </motion.button>
-              </form>
-
-              {/* Webhook Info Block */}
-              <div className="mt-6 pt-5 border-t border-white/[0.06]">
-                 <div className="flex items-center gap-2 text-sm text-white/40 mb-2">
-                  <Info className="w-4 h-4" />
-                  <span>Your Endpoint:</span>
-                </div>
-                <div className="flex items-center justify-between bg-black/30 border border-white/[0.06] p-2.5 rounded-lg font-mono text-xs overflow-hidden group">
-                   <span className="truncate text-primary/80 mr-2">{import.meta.env.VITE_WEBHOOK_URL || `${API_BASE}/webhook`}</span>
-                   <button onClick={copyWebhookUrl} className="shrink-0 p-1.5 hover:bg-white/5 rounded text-white/30 hover:text-white transition-colors">
-                     <Copy className="w-3.5 h-3.5" />
-                   </button>
-                </div>
-              </div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -z-10" />
+          
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
+              <GitPullRequest className="w-5 h-5" />
             </div>
-          </GlowCard>
+            <h2 className="text-xl font-semibold">Test Real PR</h2>
+          </div>
+          
+          <form onSubmit={handleReviewTrigger} className="flex flex-col gap-4">
+            
+            {!token ? (
+               <div className="flex flex-col items-center justify-center p-6 bg-surface/50 rounded-2xl border border-white/5 text-center">
+                 <GitBranch className="w-10 h-10 text-text-muted mb-3 opacity-50" />
+                 <h3 className="font-semibold mb-2">Authentication Required</h3>
+                 <p className="text-sm text-text-muted mb-4">Connect your GitHub account to access your repositories and trigger reviews.</p>
+                 <a 
+                   href={`${API_BASE}/auth/github/login`}
+                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-black font-semibold hover:bg-white/90 transition-all shadow-lg"
+                 >
+                    Sign in with GitHub
+                 </a>
+               </div>
+            ) : (
+              <>
+                {/* Repository Dropdown */}
+                <div>
+                  <label className="block text-sm font-medium text-text-muted mb-1.5">Repository</label>
+                  <div className="relative">
+                    <GitBranch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted/50" />
+                    <select 
+                      value={selectedRepo}
+                      onChange={(e) => setSelectedRepo(e.target.value)}
+                      disabled={isLoadingRepos}
+                      className="w-full bg-surface border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-text focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all appearance-none cursor-pointer disabled:opacity-50"
+                    >
+                      <option value="">Select a repository...</option>
+                      {repos.map(r => (
+                        <option key={r.id} value={r.full_name}>{r.full_name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted/50 pointer-events-none" />
+                    {isLoadingRepos && <Loader2 className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-primary" />}
+                  </div>
+                </div>
+                
+                {/* Pull Request Dropdown */}
+                <div>
+                  <label className="block text-sm font-medium text-text-muted mb-1.5">Pull Request</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted/50 font-mono">#</span>
+                    <select 
+                      value={selectedPr}
+                      onChange={(e) => setSelectedPr(e.target.value)}
+                      disabled={!selectedRepo || isLoadingPulls || pulls.length === 0}
+                      className="w-full bg-surface border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-text focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all appearance-none cursor-pointer disabled:opacity-50"
+                    >
+                      {pulls.length === 0 ? (
+                        <option value="">No open PRs found</option>
+                      ) : (
+                        pulls.map(pr => (
+                          <option key={pr.id} value={pr.number}>PR #{pr.number}: {pr.title.slice(0, 30)}{pr.title.length > 30 ? '...' : ''}</option>
+                        ))
+                      )}
+                    </select>
+                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted/50 pointer-events-none" />
+                    {isLoadingPulls && <Loader2 className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-primary" />}
+                  </div>
+                </div>
+              </>
+            )}
+            
+            <button 
+              type="submit"
+              disabled={status === 'loading' || !token || !selectedRepo || !selectedPr}
+              className="mt-2 w-full flex items-center justify-center gap-2 bg-text text-background hover:bg-white disabled:bg-text/50 py-3 rounded-xl font-medium transition-all duration-200 shadow-xl shadow-white/5 disabled:shadow-none"
+            >
+              {status === 'loading' ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Reviewing...
+                </>
+              ) : (
+                'Trigger Analysis'
+              )}
+            </button>
+          </form>
+
+          {/* Webhook Info Block */}
+          <div className="mt-6 pt-5 border-t border-white/5">
+             <div className="flex items-center gap-2 text-sm text-text-muted mb-2">
+              <Info className="w-4 h-4" />
+              <span>Your Endpoint:</span>
+            </div>
+            <div className="flex items-center justify-between bg-surface border border-white/10 p-2.5 rounded-lg font-mono text-xs overflow-hidden group">
+               <span className="truncate text-primary-hover mr-2">{import.meta.env.VITE_WEBHOOK_URL || `${API_BASE}/webhook`}</span>
+               <button onClick={copyWebhookUrl} className="shrink-0 p-1.5 hover:bg-white/5 rounded text-text-muted hover:text-white transition-colors">
+                 <Copy className="w-3.5 h-3.5" />
+               </button>
+            </div>
+          </div>
         </motion.div>
 
         {/* Live Feed (Right Column) */}
@@ -357,118 +332,99 @@ export default function Dashboard() {
            initial={{ opacity: 0, x: 20 }}
            animate={{ opacity: 1, x: 0 }}
            transition={{ delay: 0.2 }}
-           className="lg:col-span-2"
+           className="glass-panel rounded-3xl p-6 flex flex-col lg:col-span-2 overflow-hidden h-[500px]"
         >
-          <GlowCard glowColor="rgba(99,102,241,0.12)">
-            <div className="p-6 flex flex-col overflow-hidden h-[500px]">
-              <div className="flex items-center justify-between mb-4">
-                 <div className="flex items-center gap-2.5">
-                   <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-                     <Terminal className="w-4 h-4 text-indigo-400" />
-                   </div>
-                   <h2 className="text-lg font-semibold text-white">Live Analysis Stream</h2>
-                 </div>
-                 {status !== 'idle' && (
-                    <div className="text-sm font-medium text-white/40 flex items-center gap-2">
-                       {status === 'loading' && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
-                       {message}
+          <div className="flex items-center justify-between mb-4">
+             <div className="flex items-center gap-2">
+               <Terminal className="w-5 h-5 text-indigo-400" />
+               <h2 className="text-xl font-semibold">Live Analysis Stream</h2>
+             </div>
+             {status !== 'idle' && (
+                <div className="text-sm font-medium text-text-muted flex items-center gap-2">
+                   {status === 'loading' && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                   {message}
+                </div>
+             )}
+          </div>
+
+          <div className="w-full bg-surface h-1.5 rounded-full overflow-hidden mb-6 border border-white/5">
+            <motion.div 
+               className="h-full bg-gradient-to-r from-primary to-indigo-400"
+               animate={{ width: `${progress}%` }}
+               transition={{ duration: 0.5 }}
+            />
+          </div>
+
+          {/* Log Window */}
+          <div className="flex-1 bg-surface border border-white/10 rounded-2xl p-4 overflow-y-auto font-mono text-sm space-y-4">
+            {status === 'idle' && (
+               <div className="h-full flex items-center justify-center text-text-muted/50 italic">
+                  Waiting for webhook trigger...
+               </div>
+            )}
+            
+            <AnimatePresence>
+               {analyzedChunks.map((chunk, idx) => (
+                 <motion.div 
+                   key={`chunk-${idx}`}
+                   initial={{ opacity: 0, y: 10 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   className="space-y-2"
+                 >
+                   <div className="text-indigo-400">[{new Date().toLocaleTimeString()}] Extracted Chunk {idx + 1}...</div>
+                   <pre className="bg-background/80 p-3 rounded-xl overflow-x-auto text-xs border border-white/5 text-gray-300">
+                     {chunk.split('\n').slice(0, 10).join('\n')}
+                     {chunk.split('\n').length > 10 && '\n... (truncated)'}
+                   </pre>
+                 </motion.div>
+               ))}
+               
+               {reviews.map((rev, idx) => (
+                  <motion.div 
+                    key={`rev-${idx}`}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className={`p-3 rounded-xl border ${severityColors[rev.severity] || 'border-white/10 bg-white/5'}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold flex items-center gap-1.5">
+                        <span className="capitalize">{rev.severity}</span>: {rev.title}
+                      </span>
+                      <span className="text-xs opacity-70">Line {rev.line || 'N/A'}</span>
                     </div>
-                 )}
-              </div>
-
-              {/* Progress bar with shimmer */}
-              <div className="w-full bg-white/[0.04] h-1.5 rounded-full overflow-hidden mb-6 border border-white/[0.04]">
-                <motion.div 
-                   className="h-full rounded-full relative overflow-hidden"
-                   style={{
-                     background: 'linear-gradient(90deg, #4F46E5, #818CF8, #6366F1)',
-                   }}
-                   animate={{ width: `${progress}%` }}
-                   transition={{ duration: 0.5 }}
-                >
-                  {/* Shimmer sweep on progress bar */}
-                  <div className="absolute inset-0 shimmer-bar" />
-                </motion.div>
-              </div>
-
-              {/* Log Window — terminal aesthetic */}
-              <div className="flex-1 terminal-window scan-line-overlay rounded-xl p-4 overflow-y-auto font-mono text-sm space-y-4">
-                {status === 'idle' && (
-                   <div className="h-full flex flex-col items-center justify-center text-white/20 italic gap-3">
-                     <Terminal className="w-8 h-8 opacity-30" />
-                     <span>Waiting for webhook trigger...</span>
-                     <span className="text-xs text-white/10">$ mergemind --watch --analyze</span>
-                   </div>
-                )}
-                
-                <AnimatePresence>
-                   {analyzedChunks.map((chunk, idx) => (
-                     <motion.div 
-                       key={`chunk-${idx}`}
-                       initial={{ opacity: 0, y: 10 }}
-                       animate={{ opacity: 1, y: 0 }}
-                       className="space-y-2"
-                     >
-                       <div className="text-indigo-400 flex items-center gap-2">
-                         <span className="text-white/20">$</span>
-                         [{new Date().toLocaleTimeString()}] Extracted Chunk {idx + 1}...
+                    <p className="opacity-90 mt-1 mb-2 leading-relaxed">{rev.description}</p>
+                    {rev.suggestion && (
+                       <div className="mt-2 bg-background/50 rounded-lg p-2 text-xs opacity-90 border border-current/10">
+                          <span className="font-semibold block mb-1">💡 Suggestion:</span>
+                          {rev.suggestion}
                        </div>
-                       <pre className="bg-black/40 p-3 rounded-xl overflow-x-auto text-xs border border-white/[0.05] text-emerald-300/70 leading-relaxed">
-                         {chunk.split('\n').slice(0, 10).join('\n')}
-                         {chunk.split('\n').length > 10 && '\n... (truncated)'}
-                       </pre>
-                     </motion.div>
-                   ))}
-                   
-                   {reviews.map((rev, idx) => (
-                      <motion.div 
-                        key={`rev-${idx}`}
-                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                        className={`p-4 rounded-xl border ${severityColors[rev.severity] || 'border-white/10 bg-white/5'} ${severityGlow[rev.severity] || ''}`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold flex items-center gap-1.5">
-                            <span className="capitalize">{rev.severity}</span>: {rev.title}
-                          </span>
-                          <span className="text-xs opacity-70 font-mono">Line {rev.line || 'N/A'}</span>
-                        </div>
-                        <p className="opacity-90 mt-1 mb-2 leading-relaxed">{rev.description}</p>
-                        {rev.suggestion && (
-                           <div className="mt-2 bg-black/30 rounded-lg p-2 text-xs opacity-90 border border-current/10">
-                              <span className="font-semibold block mb-1">💡 Suggestion:</span>
-                              {rev.suggestion}
-                           </div>
-                        )}
-                        {rev.fix && (
-                           <div className="mt-2 bg-black/40 rounded-lg overflow-hidden border border-emerald-500/20">
-                              <div className="flex items-center justify-between px-3 py-1.5 bg-emerald-500/10 border-b border-emerald-500/20">
-                                <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
-                                  ✅ Suggested Fix — Copy & Replace
-                                </span>
-                                <button 
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(rev.fix);
-                                  }}
-                                  className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors font-medium flex items-center gap-1"
-                                >
-                                  <Copy className="w-3 h-3" />
-                                  Copy Fix
-                                </button>
-                              </div>
-                              <pre className="p-3 text-xs overflow-x-auto text-emerald-300/90 leading-relaxed whitespace-pre-wrap font-mono">
-                                {rev.fix}
-                              </pre>
-                           </div>
-                        )}
-                      </motion.div>
-                   ))}
-                </AnimatePresence>
-                <div ref={bottomRef} />
-              </div>
-            </div>
-          </GlowCard>
+                    )}
+                    {rev.fix && (
+                       <div className="mt-2 bg-background/80 rounded-lg overflow-hidden border border-emerald-500/20">
+                          <div className="flex items-center justify-between px-3 py-1.5 bg-emerald-500/10 border-b border-emerald-500/20">
+                            <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
+                              ✅ Suggested Fix — Copy & Replace
+                            </span>
+                            <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText(rev.fix);
+                              }}
+                              className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors font-medium flex items-center gap-1"
+                            >
+                              <Copy className="w-3 h-3" />
+                              Copy Fix
+                            </button>
+                          </div>
+                          <pre className="p-3 text-xs overflow-x-auto text-emerald-300/90 leading-relaxed whitespace-pre-wrap">
+                            {rev.fix}
+                          </pre>
+                       </div>
+                    )}
+                  </motion.div>
+               ))}
+            </AnimatePresence>
+            <div ref={bottomRef} />
+          </div>
         </motion.div>
 
       </div>
