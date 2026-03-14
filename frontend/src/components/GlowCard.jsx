@@ -1,57 +1,75 @@
-import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useRef, useState, useEffect } from 'react';
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 
-export default function GlowCard({ children, className = '', glowColor = 'rgba(79,70,229,0.15)', ...props }) {
-  const containerRef = useRef(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
+export default function GlowCard({ children, className = '', glowColor = 'rgba(79,70,229,0.15)', tilt = true }) {
+  const cardRef = useRef(null);
+  
+  // Mouse position for glow effect
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
 
-  const handleMouseMove = (e) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    setMousePos({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
-  };
+  // Mouse position for 3D tilt
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  // Smooth springs for tilt
+  const stiffness = 150;
+  const damping = 20;
+  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [10, -10]), { stiffness, damping });
+  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-10, 10]), { stiffness, damping });
+
+  function handleMouseMove(e) {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    
+    // Update glow position
+    mouseX.set(e.clientX - rect.left);
+    mouseY.set(e.clientY - rect.top);
+
+    // Update tilt position (-0.5 to 0.5)
+    if (tilt) {
+      const xPos = (e.clientX - rect.left) / rect.width - 0.5;
+      const yPos = (e.clientY - rect.top) / rect.height - 0.5;
+      x.set(xPos);
+      y.set(yPos);
+    }
+  }
+
+  function handleMouseLeave() {
+    x.set(0);
+    y.set(0);
+  }
 
   return (
     <motion.div
-      ref={containerRef}
+      ref={cardRef}
       onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={`relative rounded-2xl overflow-hidden group ${className}`}
-      {...props}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        rotateX: tilt ? rotateX : 0,
+        rotateY: tilt ? rotateY : 0,
+        transformStyle: 'preserve-3d',
+      }}
+      className={`group relative rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl transition-all duration-300 hover:border-white/[0.15] hover:bg-white/[0.05] overflow-hidden ${className}`}
     >
-      {/* Animated glow border that follows mouse */}
-      <div
-        className="absolute inset-0 rounded-2xl transition-opacity duration-500 pointer-events-none"
+      {/* Radial glow follow */}
+      <motion.div
+        className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
         style={{
-          opacity: isHovered ? 1 : 0,
-          background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, ${glowColor}, transparent 40%)`,
+          background: useTransform(
+            [mouseX, mouseY],
+            ([x, y]) => `radial-gradient(600px circle at ${x}px ${y}px, ${glowColor}, transparent 40%)`
+          ),
         }}
       />
 
-      {/* Top edge light reflection */}
-      <div
-        className="absolute top-0 left-0 right-0 h-px transition-opacity duration-500 pointer-events-none"
-        style={{
-          opacity: isHovered ? 1 : 0.3,
-          background: `radial-gradient(ellipse at ${mousePos.x}px 0px, rgba(255,255,255,0.15), transparent 50%)`,
-        }}
-      />
-
-      {/* Content */}
-      <div className="relative z-10 h-full bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl transition-all duration-500 group-hover:border-white/[0.12] group-hover:bg-white/[0.05]"
-        style={{
-          boxShadow: isHovered
-            ? `0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 0 rgba(255,255,255,0.06)`
-            : `0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 0 rgba(255,255,255,0.03)`,
-        }}
-      >
+      {/* Content wrapper with perspective insulation */}
+      <div style={{ transform: 'translateZ(20px)' }} className="relative z-10 w-full h-full">
         {children}
       </div>
+      
+      {/* Decorative corner reflection */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/[0.02] to-transparent rounded-bl-full pointer-events-none opacity-50" />
     </motion.div>
   );
 }
