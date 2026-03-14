@@ -22,9 +22,34 @@ export default function Dashboard() {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('idle');
   const [isCopied, setIsCopied] = useState(false);
+  const [user, setUser] = useState(null);
   const logEndRef = useRef(null);
 
   const webhookUrl = `${import.meta.env.VITE_WEBHOOK_URL || 'http://localhost:3000/webhook'}`;
+
+  // Handle Auth Token from URL Hash
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes('token=')) {
+      const token = hash.split('token=')[1];
+      localStorage.setItem('mergemind_token', token);
+      // Clean URL
+      window.history.replaceState(null, null, window.location.pathname);
+    }
+
+    const savedToken = localStorage.getItem('mergemind_token');
+    if (savedToken) {
+      try {
+        const payload = JSON.parse(atob(savedToken.split('.')[1]));
+        setUser(payload);
+        // Set global auth header for this file's api instance
+        api.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+      } catch (e) {
+        console.error("Invalid token", e);
+        localStorage.removeItem('mergemind_token');
+      }
+    }
+  }, []);
 
   useEffect(() => {
     socket.on('reviewUpdate', (data) => {
@@ -50,7 +75,17 @@ export default function Dashboard() {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
+  const handleLogin = () => {
+    window.location.href = `${api.defaults.baseURL}/auth/github/login`;
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('mergemind_token');
+    setUser(null);
+  };
+
   const triggerManualReview = async () => {
+    if (!user) return;
     setStatus('processing');
     setLogs(['Initializing manual review...', 'Fetching PR metadata...']);
     setProgress(10);
@@ -100,36 +135,57 @@ export default function Dashboard() {
                   <h2 className="text-xl font-bold text-white tracking-tight">Test Real PR</h2>
                </div>
 
-               <div className="flex flex-col gap-6">
-                  <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-center backdrop-blur-sm relative group overflow-hidden">
-                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                     <Github className="w-12 h-12 mx-auto mb-4 text-white/10 group-hover:text-primary/40 transition-colors duration-500" />
-                     <h3 className="font-bold text-white mb-2 relative z-10">Authentication Required</h3>
-                     <p className="text-sm text-white/40 mb-6 relative z-10 font-light">Connect your GitHub account to access your repositories and trigger reviews.</p>
-                     
-                     <Magnetic strength={0.4} radius={60}>
-                        <button className="w-full bg-white text-black hover:bg-white/90 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-3 transition-all shadow-xl relative z-10">
-                           <Github className="w-5 h-5" />
-                           Sign in with GitHub
+                <div className="flex flex-col gap-6">
+                  {!user ? (
+                    <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-center backdrop-blur-sm relative group overflow-hidden">
+                       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                       <Github className="w-12 h-12 mx-auto mb-4 text-white/10 group-hover:text-primary/40 transition-colors duration-500" />
+                       <h3 className="font-bold text-white mb-2 relative z-10">Authentication Required</h3>
+                       <p className="text-sm text-white/40 mb-6 relative z-10 font-light">Connect your GitHub account to access your repositories and trigger reviews.</p>
+                       
+                       <Magnetic strength={0.4} radius={60}>
+                          <button 
+                            onClick={handleLogin}
+                            className="w-full bg-white text-black hover:bg-white/90 font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-3 transition-all shadow-xl relative z-10"
+                          >
+                             <Github className="w-5 h-5" />
+                             Sign in with GitHub
+                          </button>
+                       </Magnetic>
+                    </div>
+                  ) : (
+                    <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 backdrop-blur-sm relative group overflow-hidden">
+                       <div className="flex items-center gap-4 mb-6">
+                          <img src={user.avatar_url} alt={user.username} className="w-12 h-12 rounded-xl border border-white/10" />
+                          <div>
+                             <h3 className="font-bold text-white leading-none mb-1">{user.username}</h3>
+                             <p className="text-[10px] text-white/40 uppercase tracking-widest font-black">GitHub Authenticated</p>
+                          </div>
+                          <button 
+                            onClick={handleLogout}
+                            className="ml-auto p-2 text-white/20 hover:text-white transition-colors"
+                          >
+                             Logout
+                          </button>
+                       </div>
+                       
+                       <Magnetic strength={0.3}>
+                        <button 
+                           onClick={triggerManualReview}
+                           disabled={status === 'processing'}
+                           className={`w-full py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-3 transition-all border relative overflow-hidden group ${
+                             status === 'processing' 
+                               ? 'bg-white/5 border-white/10 text-white/20' 
+                               : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 shadow-glow-primary/10'
+                           }`}
+                        >
+                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                           <Play className={`w-5 h-5 ${status === 'processing' ? 'animate-pulse' : ''}`} />
+                           {status === 'processing' ? 'Analyzing...' : 'Trigger Analysis'}
                         </button>
-                     </Magnetic>
-                  </div>
-
-                  <Magnetic strength={0.3}>
-                    <button 
-                       onClick={triggerManualReview}
-                       disabled={status === 'processing'}
-                       className={`w-full py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-3 transition-all border relative overflow-hidden group ${
-                         status === 'processing' 
-                           ? 'bg-white/5 border-white/10 text-white/20' 
-                           : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 shadow-glow-primary/10'
-                       }`}
-                    >
-                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                       <Play className={`w-5 h-5 ${status === 'processing' ? 'animate-pulse' : ''}`} />
-                       {status === 'processing' ? 'Analyzing...' : 'Trigger Analysis'}
-                    </button>
-                  </Magnetic>
+                      </Magnetic>
+                    </div>
+                  )}
                </div>
 
                <div className="mt-8 pt-8 border-t border-white/5">
