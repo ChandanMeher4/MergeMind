@@ -6,27 +6,131 @@
   body {
     @apply bg-background text-text font-sans antialiased selection:bg-primary/30;
   }
-}
 
-/* Glass panel utility */
-@layer utilities {
-  .glass-panel {
-    @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-xl;
+  /* Smooth scrolling everywhere */
+  html {
+    scroll-behavior: smooth;
   }
 }
 
-/* Custom scrollbar */
+/* ── Glass panel utility ─────────────────────────────────────────── */
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] shadow-xl;
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .glass-panel-strong {
+    @apply bg-white/[0.07] backdrop-blur-2xl border border-white/[0.12] shadow-2xl;
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  }
+
+  /* Text glow effects */
+  .text-glow {
+    text-shadow: 0 0 20px rgba(79, 70, 229, 0.5), 0 0 60px rgba(79, 70, 229, 0.2);
+  }
+
+  .text-glow-white {
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.3), 0 0 60px rgba(255, 255, 255, 0.1);
+  }
+
+  /* Shimmer bar animation */
+  .shimmer-bar {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* Animated gradient text */
+  .gradient-text-animated {
+    background: linear-gradient(
+      270deg,
+      #4F46E5, #818CF8, #6366F1, #A78BFA, #4F46E5
+    );
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradient-shift 6s ease infinite;
+  }
+
+  /* Neon glow borders */
+  .neon-border-primary {
+    box-shadow: 0 0 5px rgba(79, 70, 229, 0.3),
+                inset 0 0 5px rgba(79, 70, 229, 0.1);
+    border-color: rgba(79, 70, 229, 0.4);
+  }
+}
+
+/* ── Custom scrollbar ────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
-  border-radius: 4px;
+  background: rgba(79, 70, 229, 0.3);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
+  background: rgba(79, 70, 229, 0.5);
+}
+
+/* ── Focus ring ──────────────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid rgba(79, 70, 229, 0.5);
+  outline-offset: 2px;
+}
+
+/* ── Terminal / code viewer aesthetic ────────────────────────────── */
+.terminal-window {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.terminal-window::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.01) 2px,
+    rgba(255, 255, 255, 0.01) 4px
+  );
+  pointer-events: none;
+}
+
+/* ── Scan-line overlay for terminal ──────────────────────────────── */
+.scan-line-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(79, 70, 229, 0.03) 50%,
+    transparent 100%
+  );
+  animation: scan-line 8s linear infinite;
+  pointer-events: none;
+  z-index: 1;
 }
