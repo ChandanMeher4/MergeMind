@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileCode2, History, AlertCircle, ChevronRight, Search, Filter, ArrowUpRight } from 'lucide-react';
-import { api } from '../api';
+import { FileCode2, History, AlertCircle, ChevronRight, Search, Filter } from 'lucide-react';
+import axios from 'axios';
 import GlowCard from '../components/GlowCard';
-import Magnetic from '../components/Magnetic';
-import ReviewCard from '../components/ReviewCard';
 
+const api = axios.create({
+  baseURL: (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, ''),
+});
+
+// Using same fadeUp as TeamHealth
 const fadeUp = {
-  hidden: { opacity: 0, y: 20, filter: 'blur(8px)' },
-  visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+  hidden: { opacity: 0, y: 20, filter: 'blur(6px)' },
+  visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } }
 };
 
 export default function ReviewHistory() {
@@ -47,11 +50,19 @@ export default function ReviewHistory() {
   };
 
   const severityColors = {
-    critical: "text-red-400 border-red-500/20 bg-red-500/10 shadow-[0_0_20px_rgba(239,68,68,0.1)]",
-    high: "text-orange-400 border-orange-500/20 bg-orange-500/10 shadow-[0_0_20px_rgba(249,115,22,0.1)]",
-    medium: "text-yellow-400 border-yellow-500/20 bg-yellow-500/10 shadow-[0_0_20px_rgba(234,179,8,0.1)]",
-    low: "text-blue-400 border-blue-500/20 bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.1)]",
-    suggestion: "text-emerald-400 border-emerald-500/20 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
+    critical: "text-red-400 border-red-500/20 bg-red-500/10",
+    high: "text-orange-400 border-orange-500/20 bg-orange-500/10",
+    medium: "text-yellow-400 border-yellow-500/20 bg-yellow-500/10",
+    low: "text-blue-400 border-blue-500/20 bg-blue-500/10",
+    suggestion: "text-emerald-400 border-emerald-500/20 bg-emerald-500/10"
+  };
+
+  const severityGlow = {
+    critical: 'shadow-[0_0_12px_rgba(239,68,68,0.12)]',
+    high: 'shadow-[0_0_12px_rgba(249,115,22,0.12)]',
+    medium: 'shadow-[0_0_12px_rgba(234,179,8,0.12)]',
+    low: 'shadow-[0_0_12px_rgba(59,130,246,0.12)]',
+    suggestion: 'shadow-[0_0_12px_rgba(16,185,129,0.12)]',
   };
 
   if (loading) {
@@ -59,7 +70,7 @@ export default function ReviewHistory() {
         <div className="flex h-screen items-center justify-center p-8 mt-16">
            <div className="animate-pulse flex flex-col items-center gap-4">
              <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-             <p className="text-white/40 font-mono text-xs uppercase tracking-widest">Retrieving Archives...</p>
+             <p className="text-white/40">Loading History...</p>
            </div>
         </div>
      );
@@ -68,64 +79,62 @@ export default function ReviewHistory() {
   return (
     <div className="flex flex-col h-screen max-w-7xl mx-auto px-4 py-8 mt-16 pb-24 relative z-10">
       
-      <motion.div initial="hidden" animate="visible" variants={fadeUp} className="mb-10 text-center md:text-left">
-        <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-4">
-          <span className="bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent italic mr-3">Review</span>
+      <motion.div initial="hidden" animate="visible" variants={fadeUp} className="mb-8">
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tighter mb-4">
+          <span className="bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">Review </span>
           <span className="gradient-text-animated">History</span>
         </h1>
-        <p className="text-lg text-white/40 max-w-2xl font-light tracking-wide">
-          Intelligence vault of past analyses, security audits, and architectural reviews.
+        <p className="text-lg text-white/40 max-w-2xl">
+          Browse past pull request analyses, inspect AI-generated diffs, and review historically suggested fixes.
         </p>
       </motion.div>
 
-      <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-280px)] min-h-0">
+      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-250px)]">
          {/* Left col: List of reviews */}
          <motion.div 
             initial="hidden" animate="visible" variants={fadeUp}
-            className="w-full lg:w-[400px] flex flex-col gap-3 overflow-y-auto pr-2 custom-scrollbar"
+            className="w-full lg:w-1/3 flex flex-col gap-3 overflow-y-auto pr-2"
          >
             {reviews.length === 0 ? (
-               <GlowCard tilt={true} className="p-10 text-center">
-                   <History className="w-12 h-12 mb-6 text-white/10 mx-auto" />
-                   <h3 className="text-lg font-bold text-white mb-2 tracking-tight">Vault Empty</h3>
-                   <p className="text-xs text-white/30 font-light">Trigger a webhook to index your first review.</p>
+               <GlowCard>
+                 <div className="p-8 flex flex-col items-center justify-center text-center">
+                   <History className="w-12 h-12 mb-4 text-white/20" />
+                   <p className="text-white/50">No reviews yet.</p>
+                   <p className="text-sm mt-2 text-white/30">Trigger a webhook to see reviews here.</p>
+                 </div>
                </GlowCard>
             ) : (
                reviews.map((rev) => (
                   <motion.button
                      key={rev.id}
                      onClick={() => loadReviewDetails(rev.id)}
-                     whileHover={{ scale: 1.02 }}
-                     whileTap={{ scale: 0.98 }}
-                     className={`p-6 rounded-2xl border text-left transition-all duration-500 relative group overflow-hidden ${
+                     className={`p-4 rounded-xl border text-left transition-all duration-300 ${
                        selectedReviewId === rev.id 
-                         ? 'border-primary/50 bg-primary/10 shadow-glow-primary/20' 
-                         : 'border-white/[0.06] bg-white/[0.03] hover:border-white/[0.15] hover:bg-white/[0.06]'
+                         ? 'border-primary/40 bg-primary/10 shadow-glow-primary' 
+                         : 'border-white/[0.06] bg-white/[0.03] hover:border-white/[0.12] hover:bg-white/[0.05]'
                      }`}
+                     whileHover={{ scale: 1.01 }}
+                     whileTap={{ scale: 0.99 }}
                   >
-                     <div className="flex justify-between items-start mb-3">
-                        <span className="font-bold text-white tracking-tight text-lg group-hover:text-primary transition-colors">{rev.repo}</span>
-                        <ChevronRight className={`w-5 h-5 transition-all duration-300 ${
-                          selectedReviewId === rev.id ? 'translate-x-1 text-primary' : 'text-white/10'
+                     <div className="flex justify-between items-start mb-2">
+                        <span className="font-semibold text-white/90 truncate tracking-tight">{rev.repo}</span>
+                        <ChevronRight className={`w-4 h-4 transition-all duration-200 ${
+                          selectedReviewId === rev.id ? 'translate-x-1 text-primary' : 'text-white/20'
                         }`} />
                      </div>
-                     <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-white/40">
-                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/[0.04]">
+                     <div className="flex items-center gap-3 text-sm text-white/40">
+                        <span className="flex items-center gap-1">
                            <FileCode2 className="w-3.5 h-3.5" />
                            PR #{rev.prNumber}
                         </span>
-                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-emerald-500/5 text-emerald-400/80">
+                        <span className="flex items-center gap-1">
                            <AlertCircle className="w-3.5 h-3.5" />
-                           {rev.issueCount} Findings
+                           {rev.issueCount} issues
                         </span>
                      </div>
-                     <div className="text-[10px] text-white/10 mt-5 font-mono group-hover:text-white/20 transition-colors uppercase">
-                        Indexed: {new Date(rev.reviewedAt).toLocaleString()}
+                     <div className="text-xs text-white/20 mt-3 font-mono">
+                        {new Date(rev.reviewedAt).toLocaleString()}
                      </div>
-                     {/* Background glow on selected */}
-                     {selectedReviewId === rev.id && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-                     )}
                   </motion.button>
                ))
             )}
@@ -134,85 +143,105 @@ export default function ReviewHistory() {
          {/* Right col: Details */}
          <motion.div 
             initial="hidden" animate="visible" variants={fadeUp}
-            className="flex-1 min-w-0"
+            className="w-full lg:w-2/3"
          >
-           <GlowCard tilt={false} className="h-full">
+           <GlowCard glowColor="rgba(99,102,241,0.08)" className="h-full">
              <div className="flex flex-col h-full overflow-hidden rounded-2xl">
                 {loadingDetails ? (
-                   <div className="flex-1 flex flex-col items-center justify-center gap-4">
-                      <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      <p className="text-xs font-mono text-white/20 uppercase tracking-[0.2em]">Decompressing Metadata...</p>
+                   <div className="flex-1 flex items-center justify-center">
+                      <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                    </div>
                 ) : !selectedReviewDetails ? (
-                   <div className="flex-1 flex flex-col items-center justify-center text-white/10 gap-6">
-                      <Search className="w-16 h-16 opacity-10" />
-                      <p className="text-xl font-bold tracking-tighter italic">Select an entry to view technical findings</p>
+                   <div className="flex-1 flex flex-col items-center justify-center text-white/20 gap-3">
+                      <Search className="w-12 h-12 opacity-30" />
+                      <p>Select a review to view details</p>
                    </div>
                 ) : (
-                   <div className="flex-1 overflow-y-auto flex flex-col h-full custom-scrollbar">
-                      {/* Header */}
-                      <div className="p-8 border-b border-white/[0.06] sticky top-0 backdrop-blur-2xl z-10 bg-background/60">
-                         <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-transparent opacity-50" />
-                         <div className="flex justify-between items-start relative z-10">
-                            <div>
-                               <h2 className="text-3xl font-black mb-2 text-white tracking-tighter uppercase">{selectedReviewDetails.repo}</h2>
-                               <p className="text-white/40 text-sm flex items-center gap-3 font-mono font-bold">
-                                  <span className="px-2 py-0.5 rounded bg-white/5">PR #{selectedReviewDetails.prNumber}</span>
-                                  <span className="opacity-40">•</span>
-                                  <span>{new Date(selectedReviewDetails.reviewedAt).toLocaleString()}</span>
-                               </p>
+                   <div className="flex-1 overflow-y-auto flex flex-col h-full">
+                      {/* Header with gradient background */}
+                      <div className="p-6 border-b border-white/[0.06] sticky top-0 backdrop-blur-xl z-10 bg-white/[0.03]">
+                         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent" />
+                         <h2 className="text-xl font-bold mb-1 text-white relative z-10">{selectedReviewDetails.repo}</h2>
+                         <p className="text-white/40 text-sm flex items-center gap-2 relative z-10 font-mono">
+                            PR #{selectedReviewDetails.prNumber} • {new Date(selectedReviewDetails.reviewedAt).toLocaleString()}
+                         </p>
+                      </div>
+                      
+                      <div className="p-6 flex-1">
+                         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                              <AlertCircle className="w-4 h-4 text-primary" />
                             </div>
-                            <Magnetic strength={0.2}>
-                               <button className="p-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all">
-                                  <ArrowUpRight className="w-5 h-5" />
-                               </button>
-                            </Magnetic>
+                            <span className="text-white">Identified Issues ({selectedReviewDetails.issues?.length || 0})</span>
+                         </h3>
+                         
+                         <div className="flex flex-col gap-4 mb-8">
+                            {selectedReviewDetails.issues?.length === 0 ? (
+                               <div className="p-4 rounded-xl border border-white/[0.06] text-white/40 text-sm text-center">
+                                  No issues identified in this review.
+                               </div>
+                            ) : (
+                               selectedReviewDetails.issues?.map((issue, idx) => (
+                                  <motion.div 
+                                    key={idx} 
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                    className={`p-4 rounded-xl border ${severityColors[issue.severity] || 'border-white/10 bg-white/5'} ${severityGlow[issue.severity] || ''}`}
+                                  >
+                                     <div className="flex justify-between items-start mb-2">
+                                        <span className="font-bold flex items-center gap-2">
+                                           <span className="capitalize">{issue.severity}</span>: {issue.title}
+                                        </span>
+                                        <span className="text-xs opacity-70 font-mono bg-black/20 px-2 py-0.5 rounded">Line {issue.line || 'N/A'}</span>
+                                     </div>
+                                     <p className="opacity-90 text-sm mb-3 leading-relaxed">{issue.description}</p>
+                                     
+                                     {issue.suggestion && (
+                                        <div className="mt-2 bg-black/20 rounded-lg p-3 text-sm opacity-90 border border-current/10">
+                                           <span className="font-semibold block mb-1">💡 Suggestion:</span>
+                                           {issue.suggestion}
+                                        </div>
+                                     )}
+
+                                     {issue.fix && (
+                                        <div className="mt-3 terminal-window rounded-lg overflow-hidden border border-emerald-500/20">
+                                           <div className="px-3 py-2 bg-emerald-500/10 border-b border-emerald-500/20 text-xs font-semibold text-emerald-400 flex items-center gap-2">
+                                              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                                              ✅ Fix Code
+                                           </div>
+                                           <pre className="p-3 text-xs overflow-x-auto text-emerald-300/80 leading-relaxed whitespace-pre-wrap font-mono">
+                                              {issue.fix}
+                                           </pre>
+                                        </div>
+                                     )}
+                                  </motion.div>
+                               ))
+                            )}
+                         </div>
+
+                         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2.5 border-t border-white/[0.06] pt-8 mt-8">
+                            <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                              <FileCode2 className="w-4 h-4 text-emerald-400" />
+                            </div>
+                            <span className="text-white">Analyzed Diff Context</span>
+                         </h3>
+                         <div className="terminal-window scan-line-overlay rounded-xl overflow-hidden">
+                            <div className="px-3 py-2 border-b border-white/[0.06] flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-red-500/70" />
+                              <span className="w-2 h-2 rounded-full bg-yellow-500/70" />
+                              <span className="w-2 h-2 rounded-full bg-green-500/70" />
+                              <span className="ml-3 text-xs text-white/20 font-mono">diff --context</span>
+                            </div>
+                            <pre className="p-4 text-xs overflow-x-auto font-mono text-emerald-300/70 whitespace-pre-wrap leading-relaxed relative z-10">
+                               {selectedReviewDetails.diffText || "Diff context unavailable"}
+                            </pre>
                          </div>
                       </div>
-                                            <div className="p-8 flex-1 space-y-12">
-                          <section>
-                             <h3 className="text-xs font-black uppercase tracking-[0.3em] text-white/20 mb-6 flex items-center gap-3">
-                                <AlertCircle className="w-4 h-4" />
-                                Critical Insights
-                             </h3>
-                             
-                             <div className="grid grid-cols-1 gap-1">
-                                {selectedReviewDetails.issues?.length === 0 ? (
-                                   <div className="p-10 rounded-2xl border border-dashed border-white/5 text-center">
-                                      <p className="text-white/20 italic font-light">Comprehensive analysis completed. Zero vulnerabilities identified.</p>
-                                   </div>
-                                ) : (
-                                   selectedReviewDetails.issues?.map((issue, idx) => (
-                                      <ReviewCard key={idx} review={issue} />
-                                   ))
-                                )}
-                             </div>
-                          </section>
-
-                          <section>
-                             <h3 className="text-xs font-black uppercase tracking-[0.3em] text-white/20 mb-6 flex items-center gap-3">
-                                <FileCode2 className="w-4 h-4" />
-                                Analyzed Diff Context
-                             </h3>
-                             <div className="bg-black/40 rounded-2xl overflow-hidden border border-white/5 shadow-2xl">
-                                <div className="px-5 py-3 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
-                                  <div className="flex items-center gap-2">
-                                     <span className="w-2 h-2 rounded-full bg-red-400 opacity-50" />
-                                     <span className="w-2 h-2 rounded-full bg-yellow-400 opacity-50" />
-                                     <span className="w-2 h-2 rounded-full bg-emerald-400 opacity-50" />
-                                  </div>
-                                  <span className="text-[10px] text-white/20 font-black uppercase tracking-widest">Metadata Archive</span>
-                                </div>
-                                <pre className="p-6 text-xs overflow-x-auto font-mono text-indigo-300/60 whitespace-pre-wrap leading-relaxed custom-scrollbar max-h-[500px]">
-                                   {selectedReviewDetails.diffText || "Diff context unavailable in archives."}
-                                </pre>
-                             </div>
-                           </section>
-                        </div>
-                     </div>
-                  )}
-               </div>
-            </GlowCard>
+                   </div>
+                )}
+             </div>
+           </GlowCard>
          </motion.div>
       </div>
     </div>
