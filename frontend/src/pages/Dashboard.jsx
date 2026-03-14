@@ -23,6 +23,10 @@ export default function Dashboard() {
   const [status, setStatus] = useState('idle');
   const [isCopied, setIsCopied] = useState(false);
   const [user, setUser] = useState(null);
+  const [repos, setRepos] = useState([]);
+  const [pulls, setPulls] = useState([]);
+  const [selectedRepo, setSelectedRepo] = useState('');
+  const [selectedPull, setSelectedPull] = useState('');
   const logEndRef = useRef(null);
 
   const webhookUrl = `${import.meta.env.VITE_WEBHOOK_URL || 'http://localhost:3000/webhook'}`;
@@ -56,6 +60,27 @@ export default function Dashboard() {
       }
     }
   }, []);
+
+  // Fetch Repositories
+  useEffect(() => {
+    if (user) {
+      api.get('/api/repos')
+        .then(res => setRepos(res.data))
+        .catch(err => console.error("Failed to fetch repos", err));
+    }
+  }, [user]);
+
+  // Fetch Pull Requests
+  useEffect(() => {
+    if (selectedRepo) {
+      const [owner, repo] = selectedRepo.split('/');
+      api.get(`/api/repos/${owner}/${repo}/pulls`)
+        .then(res => setPulls(res.data))
+        .catch(err => console.error("Failed to fetch PRs", err));
+    } else {
+      setPulls([]);
+    }
+  }, [selectedRepo]);
 
   useEffect(() => {
     socket.on('reviewUpdate', (data) => {
@@ -91,14 +116,22 @@ export default function Dashboard() {
   };
 
   const triggerManualReview = async () => {
-    if (!user) return;
+    if (!user || !selectedRepo || !selectedPull) return;
+    
+    const [owner, name] = selectedRepo.split('/');
+    const pull = pulls.find(p => p.number === parseInt(selectedPull));
+
     setStatus('processing');
-    setLogs(['Initializing manual review...', 'Fetching PR metadata...']);
+    setLogs(['Initializing review...', `Target: ${selectedRepo} PR #${selectedPull}`]);
     setProgress(10);
+    
     try {
-      await api.post('/api/trigger-test-review');
+      await api.post('/api/trigger-review', {
+        repository: { owner: { login: owner }, name: name, full_name: selectedRepo },
+        pull_request: { number: pull.number, title: pull.title, user: pull.user }
+      });
     } catch (err) {
-      setLogs(prev => [...prev, `Error: ${err.message}`]);
+      setLogs(prev => [...prev, `Error: ${err.response?.data?.error || err.message}`]);
       setStatus('idle');
     }
   };
@@ -174,13 +207,44 @@ export default function Dashboard() {
                              Logout
                           </button>
                        </div>
+
+                       <div className="space-y-4 mb-6">
+                          <div>
+                             <label className="text-[10px] font-black text-white/20 uppercase tracking-widest block mb-2">Select Repository</label>
+                             <select 
+                                value={selectedRepo} 
+                                onChange={(e) => { setSelectedRepo(e.target.value); setSelectedPull(''); }}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-sm focus:border-primary outline-none transition-all appearance-none"
+                             >
+                                <option value="">Choose a repo...</option>
+                                {repos.map(repo => (
+                                   <option key={repo.id} value={repo.full_name}>{repo.full_name}</option>
+                                ))}
+                             </select>
+                          </div>
+
+                          <div>
+                             <label className="text-[10px] font-black text-white/20 uppercase tracking-widest block mb-2">Select Pull Request</label>
+                             <select 
+                                value={selectedPull} 
+                                onChange={(e) => setSelectedPull(e.target.value)}
+                                disabled={!selectedRepo}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white text-sm focus:border-primary outline-none transition-all appearance-none disabled:opacity-30"
+                             >
+                                <option value="">{pulls.length > 0 ? 'Choose a PR...' : 'No open PRs found'}</option>
+                                {pulls.map(pr => (
+                                   <option key={pr.id} value={pr.number}>#{pr.number} - {pr.title}</option>
+                                ))}
+                             </select>
+                          </div>
+                       </div>
                        
                        <Magnetic strength={0.3}>
                         <button 
                            onClick={triggerManualReview}
-                           disabled={status === 'processing'}
+                           disabled={status === 'processing' || !selectedPull}
                            className={`w-full py-4 px-6 rounded-xl font-bold flex items-center justify-center gap-3 transition-all border relative overflow-hidden group ${
-                             status === 'processing' 
+                             status === 'processing' || !selectedPull
                                ? 'bg-white/5 border-white/10 text-white/20' 
                                : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 shadow-glow-primary/10'
                            }`}
