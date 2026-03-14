@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Users, Heart, AlertTriangle, TrendingUp, Trophy, ArrowRight } from 'lucide-react';
-import axios from 'axios';
+import { Activity, Users, Heart, AlertTriangle, TrendingUp, Trophy, ArrowRight, Shield, Zap, Code2, TestTube, BookOpen, Clock, ChevronUp } from 'lucide-react';
+import { api } from '../api';
 import GlowCard from '../components/GlowCard';
 import Magnetic from '../components/Magnetic';
-
-const api = axios.create({
-  baseURL: (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, ''),
-});
+import AnimatedCounter from '../components/AnimatedCounter';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20, filter: 'blur(8px)' },
@@ -30,7 +27,12 @@ export default function TeamHealth() {
       }
     };
     fetchStats();
+    
+    const interval = setInterval(fetchStats, 10000);
+    return () => clearInterval(interval);
   }, []);
+
+  const maxDailyIssues = stats ? Math.max(...stats.daily?.map(d => d.issues) || [1]) : 1;
 
   if (loading) {
     return (
@@ -77,10 +79,10 @@ export default function TeamHealth() {
         }}
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
       >
-        <StatCard title="Overall Score" value={stats.score} icon={<Heart className="w-5 h-5" />} color="text-success" />
-        <StatCard title="Active Devs" value={stats.activeDevelopers} icon={<Users className="w-5 h-5" />} color="text-primary" />
-        <StatCard title="Reviews" value={stats.totalReviews} icon={<Activity className="w-5 h-5" />} color="text-indigo-400" />
-        <StatCard title="Efficiency" value={`${stats.efficiency}%`} icon={<TrendingUp className="w-5 h-5" />} color="text-warning" />
+        <StatCard title="Hours Saved Today" value={stats.today?.hoursSaved} suffix="h" icon={<Clock className="w-5 h-5" />} color="text-emerald-400" />
+        <StatCard title="Total PRs" value={stats.totalPRs} icon={<Activity className="w-5 h-5" />} color="text-primary" />
+        <StatCard title="Issues Caught" value={stats.totalIssues} icon={<AlertTriangle className="w-5 h-5" />} color="text-warning" />
+        <StatCard title="Top Vulnerability" value={stats.topVulnerability?.count || 0} suffix=" occurrences" icon={<Shield className="w-5 h-5" />} color="text-red-400" />
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -96,19 +98,27 @@ export default function TeamHealth() {
              <span className="text-xs font-bold text-white/20 uppercase tracking-widest">Last 7 Days</span>
           </div>
           <div className="flex items-end justify-between h-48 gap-2">
-            {stats.weeklyProgress?.map((day, i) => (
+            {stats.daily?.map((day, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-3 group">
-                <div className="w-full relative">
+                <div className="w-full flex flex-col items-center justify-end h-40 relative">
                    <motion.div 
                     initial={{ height: 0 }}
-                    whileInView={{ height: `${(day.value / 100) * 160}px` }}
-                    className="w-full rounded-t-xl bg-gradient-to-t from-primary/80 to-indigo-400/80 group-hover:from-primary group-hover:to-indigo-300 transition-all duration-300 shadow-glow-primary/10 group-hover:shadow-glow-primary/30 relative"
+                    whileInView={{ height: `${(day.issues / maxDailyIssues) * 100}%` }}
+                    className="w-full rounded-t-xl bg-primary/40 group-hover:bg-primary/60 transition-all duration-300 relative overflow-hidden"
                   >
-                     {/* Shimmer overlay */}
-                     <div className="absolute inset-0 bg-shimmer animate-shimmer opacity-30" />
+                     {day.critical > 0 && (
+                        <motion.div 
+                          initial={{ height: 0 }}
+                          animate={{ height: `${(day.critical / Math.max(day.issues, 1)) * 100}%` }}
+                          className="absolute bottom-0 w-full bg-red-500/50"
+                        />
+                     )}
+                     <div className="absolute inset-0 bg-shimmer animate-shimmer opacity-20" />
                   </motion.div>
                 </div>
-                <span className="text-[10px] font-bold text-white/30 uppercase group-hover:text-white/60 transition-colors">{day.label}</span>
+                <span className="text-[10px] font-bold text-white/30 uppercase group-hover:text-white/60 transition-colors">
+                  {new Date(day.date + 'T00:00').toLocaleDateString('en-US', { weekday: 'short' })}
+                </span>
               </div>
             ))}
           </div>
@@ -123,23 +133,34 @@ export default function TeamHealth() {
               Issue Categories
            </h2>
            <div className="space-y-6">
-              {stats.categories?.map((cat, i) => (
-                <div key={i}>
-                   <div className="flex justify-between text-sm mb-2.5">
-                      <span className="font-bold text-white/70">{cat.label}</span>
-                      <span className="font-mono text-white/40">{cat.value}%</span>
-                   </div>
-                   <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        whileInView={{ width: `${cat.value}%` }}
-                        className="h-full bg-gradient-to-r from-warning to-orange-400 relative"
-                      >
-                         <div className="absolute inset-0 bg-shimmer animate-shimmer" />
-                      </motion.div>
-                   </div>
-                </div>
-              ))}
+              {Object.entries(stats.byCategory || {})
+                .sort(([, a], [, b]) => b - a)
+                .map(([cat, count], i) => {
+                  const pct = Math.round((count / (stats.totalIssues || 1)) * 100);
+                  const colorClass = cat === 'security' ? 'from-red-500 to-orange-500' :
+                                   cat === 'bug' ? 'from-orange-500 to-yellow-500' :
+                                   cat === 'performance' ? 'from-yellow-400 to-emerald-400' :
+                                   cat === 'quality' ? 'from-primary to-indigo-400' :
+                                   cat === 'testing' ? 'from-cyan-400 to-blue-500' :
+                                   'from-emerald-400 to-teal-500';
+                  return (
+                    <div key={i}>
+                       <div className="flex justify-between text-sm mb-2.5">
+                          <span className="font-bold text-white/70 capitalize">{cat.replace('-', ' ')}</span>
+                          <span className="font-mono text-white/40">{count} ({pct}%)</span>
+                       </div>
+                       <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            whileInView={{ width: `${pct}%` }}
+                            className={`h-full bg-gradient-to-r ${colorClass} relative`}
+                          >
+                             <div className="absolute inset-0 bg-shimmer animate-shimmer" />
+                          </motion.div>
+                       </div>
+                    </div>
+                  );
+                })}
            </div>
         </GlowCard>
 
@@ -147,10 +168,13 @@ export default function TeamHealth() {
         <GlowCard tilt={true} className="lg:col-span-3 p-0 overflow-hidden group">
            <div className="relative p-10 flex flex-col md:flex-row items-center justify-between gap-8">
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-primary/10 opacity-50 group-hover:scale-110 transition-transform duration-1000" />
-              <div className="relative z-10 flex-1">
-                 <h2 className="text-3xl font-black text-white mb-2 italic tracking-tight uppercase">High Impact Detected</h2>
-                 <p className="text-white/40 font-light text-lg">Your team has reduced critical technical debt by <span className="text-emerald-400 font-bold">24%</span> this sprint. Engineering excellence is trending up.</p>
-              </div>
+               <div className="relative z-10 flex-1">
+                  <h2 className="text-3xl font-black text-white mb-2 italic tracking-tight uppercase">Performance Insight</h2>
+                  <p className="text-white/40 font-light text-lg">
+                    MergeMind saved <span className="text-emerald-400 font-bold"><AnimatedCounter value={stats.today?.hoursSaved} duration={2500} />h</span> of manual review time today.
+                    Across <span className="text-primary font-bold">{stats.today?.prs}</span> PRs.
+                  </p>
+               </div>
               <Magnetic strength={0.3}>
                  <button className="relative z-10 px-8 py-4 rounded-full bg-white text-black font-black uppercase text-sm tracking-widest flex items-center gap-3 group/btn whitespace-nowrap overflow-hidden shadow-2xl">
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/5 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700" />
@@ -163,57 +187,66 @@ export default function TeamHealth() {
            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent translate-x-[-100%] animate-shimmer" style={{ animationDuration: '3s' }} />
         </GlowCard>
 
-        {/* Contributors */}
-        <GlowCard tilt={true} className="lg:col-span-3 p-8">
-           <h2 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-indigo-400/10 border border-indigo-400/20">
-                <Trophy className="w-4 h-4 text-indigo-400" />
-              </div>
-              Top Performers
-           </h2>
-           <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                 <thead>
-                    <tr className="border-b border-white/5 text-[10px] uppercase tracking-[0.2em] font-black text-white/20">
-                       <th className="pb-4 pl-4">Developer</th>
-                       <th className="pb-4">Reviews</th>
-                       <th className="pb-4">Fix Rate</th>
-                       <th className="pb-4 text-right pr-4">Impact</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-white/[0.02]">
-                    {stats.topContributors?.map((dev, i) => (
-                       <tr key={i} className="group hover:bg-white/[0.03] transition-colors">
-                          <td className="py-5 pl-4 flex items-center gap-3">
-                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white/10 to-transparent border border-white/5 flex items-center justify-center font-bold text-white group-hover:from-primary/20 group-hover:border-primary/20 transition-all">
-                                {dev.name[0]}
-                             </div>
-                             <span className="font-bold text-white group-hover:text-primary transition-colors">{dev.name}</span>
-                          </td>
-                          <td className="py-5">
-                             <span className="font-mono text-white/40">{dev.contributions}</span>
-                          </td>
-                          <td className="py-5">
-                             <span className="font-mono text-white/40">{dev.fixRate}%</span>
-                          </td>
-                          <td className="py-5 text-right pr-4">
-                             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
-                                <TrendingUp className="w-3 h-3" />
-                                High
-                             </div>
-                          </td>
-                       </tr>
-                    ))}
-                 </tbody>
-              </table>
-           </div>
-        </GlowCard>
+        {/* Repository Leaderboard */}
+         <GlowCard tilt={true} className="lg:col-span-3 p-8">
+            <h2 className="text-xl font-bold text-white mb-8 flex items-center gap-3">
+               <div className="p-2 rounded-lg bg-indigo-400/10 border border-indigo-400/20">
+                 <Trophy className="w-4 h-4 text-indigo-400" />
+               </div>
+               Repository Leaderboard
+            </h2>
+            <div className="overflow-x-auto">
+               <table className="w-full text-left border-collapse">
+                  <thead>
+                     <tr className="border-b border-white/5 text-[10px] uppercase tracking-[0.2em] font-black text-white/20">
+                        <th className="pb-4 pl-4">#</th>
+                        <th className="pb-4">Repository</th>
+                        <th className="pb-4 text-center">PRs</th>
+                        <th className="pb-4 text-center">Issues</th>
+                        <th className="pb-4 text-center text-red-400">Critical</th>
+                        <th className="pb-4 text-right pr-4">Risk Level</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.02]">
+                     {stats.leaderboard?.map((repo, i) => {
+                        const riskScore = repo.critical * 10 + repo.high * 5 + (repo.issues - repo.critical - repo.high);
+                        const riskLevel = riskScore > 30 ? { label: 'High', color: 'text-red-400 bg-red-500/10' } :
+                                        riskScore > 15 ? { label: 'Medium', color: 'text-orange-400 bg-orange-500/10' } :
+                                        { label: 'Low', color: 'text-emerald-400 bg-emerald-500/10' };
+                        return (
+                           <tr key={i} className="group hover:bg-white/[0.03] transition-colors">
+                              <td className="py-5 pl-4 font-mono text-white/20">{i + 1}</td>
+                              <td className="py-5">
+                                 <span className="font-bold text-white group-hover:text-primary transition-colors">{repo.repo}</span>
+                              </td>
+                              <td className="py-5 text-center">
+                                 <span className="font-mono text-white/40">{repo.prs}</span>
+                              </td>
+                              <td className="py-5 text-center font-bold text-white">
+                                 {repo.issues}
+                              </td>
+                              <td className="py-5 text-center font-bold text-red-500/80">
+                                 {repo.critical}
+                              </td>
+                              <td className="py-5 text-right pr-4">
+                                 <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/5 ${riskLevel.color}`}>
+                                    {riskLevel.label}
+                                    {riskScore > 15 && <ChevronUp className="w-3 h-3" />}
+                                 </div>
+                              </td>
+                           </tr>
+                        );
+                     })}
+                  </tbody>
+               </table>
+            </div>
+         </GlowCard>
       </div>
     </div>
   );
 }
 
-function StatCard({ title, value, icon, color }) {
+function StatCard({ title, value, icon, color, suffix }) {
   return (
     <GlowCard tilt={true} className="p-6 group relative">
       <div className="flex items-start justify-between mb-4">
@@ -223,7 +256,9 @@ function StatCard({ title, value, icon, color }) {
       </div>
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-1">{title}</p>
-        <p className="text-3xl font-black text-white tracking-tighter">{value}</p>
+        <p className="text-3xl font-black text-white tracking-tighter">
+          <AnimatedCounter value={value} suffix={suffix} />
+        </p>
       </div>
       {/* Dynamic line shimmer */}
       <div className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-100 transition-opacity w-full" />

@@ -1,15 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Github, Play, Terminal as TerminalIcon, AlertCircle, CheckCircle2, Info, ArrowUpRight, Copy, Check } from 'lucide-react';
-import io from 'socket.io-client';
-import axios from 'axios';
-import GlowCard from '../components/GlowCard';
+import { Play, Github, Copy, Terminal, Activity, Sparkles, Check, Info, AlertTriangle, Code, Link2 } from 'lucide-react';
 import Magnetic from '../components/Magnetic';
-
-const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3000');
-const api = axios.create({
-  baseURL: (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, ''),
-});
+import GlowCard from '../components/GlowCard';
+import ReviewCard from '../components/ReviewCard';
+import { api, socket } from '../api';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20, filter: 'blur(8px)' },
@@ -27,9 +22,18 @@ export default function Dashboard() {
   const [pulls, setPulls] = useState([]);
   const [selectedRepo, setSelectedRepo] = useState('');
   const [selectedPull, setSelectedPull] = useState('');
+  const [analyzedChunks, setAnalyzedChunks] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [socketConnected, setSocketConnected] = useState(false);
   const logEndRef = useRef(null);
 
   const webhookUrl = `${import.meta.env.VITE_WEBHOOK_URL || 'http://localhost:3000/webhook'}`;
+
+  const handleCopyWebhook = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   // Handle Auth Token from URL Hash
   useEffect(() => {
@@ -83,28 +87,38 @@ export default function Dashboard() {
   }, [selectedRepo]);
 
   useEffect(() => {
+    socket.on('connect', () => setSocketConnected(true));
+    socket.on('disconnect', () => setSocketConnected(false));
+
     socket.on('reviewUpdate', (data) => {
       if (data.type === 'log') {
-        setLogs(prev => [...prev, data.message]);
-        setProgress(data.progress || 0);
-      } else if (data.type === 'complete') {
-        setCurrentReview(data.review);
+        setLogs(prev => [...prev, data.content]);
+      }
+      if (data.type === 'progress') {
+        setProgress(data.value);
+        if (data.status) setStatus(data.status);
+      }
+      if (data.type === 'chunk') {
+        setAnalyzedChunks(prev => [...prev, data.content]);
+      }
+      if (data.type === 'reviews') {
+        setReviews(prev => [...prev, ...data.content]);
+      }
+      if (data.value === 100) {
         setStatus('idle');
-        setProgress(100);
       }
     });
-    return () => socket.off('reviewUpdate');
+
+    return () => {
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('reviewUpdate');
+    };
   }, []);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
-
-  const copyWebhook = () => {
-    navigator.clipboard.writeText(webhookUrl);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
-  };
+  }, [logs, analyzedChunks, reviews]);
 
   const handleLogin = () => {
     window.location.href = `${api.defaults.baseURL}/auth/github/login`;
@@ -122,8 +136,11 @@ export default function Dashboard() {
     const pull = pulls.find(p => p.number === parseInt(selectedPull));
 
     setStatus('processing');
-    setLogs(['Initializing review...', `Target: ${selectedRepo} PR #${selectedPull}`]);
-    setProgress(10);
+    setLogs([]);
+    setAnalyzedChunks([]);
+    setReviews([]);
+    setProgress(0);
+    setLogs(['Initializing review session...', `Target: ${selectedRepo} PR #${selectedPull}`]);
     
     try {
       await api.post('/api/trigger-review', {
@@ -147,18 +164,22 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col h-screen max-w-7xl mx-auto px-4 py-8 mt-16 pb-24 relative z-10">
       
-      <motion.div initial="hidden" animate="visible" variants={fadeUp} className="mb-10 text-center md:text-left">
-        <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-4">
-          <span className="bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent italic mr-2">Real-time</span>
-          <span className="gradient-text-animated">Analysis</span>
-        </h1>
-        <div className="flex items-center justify-center md:justify-start gap-4">
-           <p className="text-white/40 text-lg font-light tracking-wide">Test PRs and watch MergeMind analyze them chunk-by-chunk.</p>
-           <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold uppercase tracking-widest ${socket.connected ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400' : 'border-red-500/20 bg-red-500/5 text-red-400'}`}>
-              <span className={`w-2 h-2 rounded-full ${socket.connected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
-              {socket.connected ? 'Connected' : 'Disconnected'}
-           </div>
-        </div>
+      {/* Dashboard Header */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
+         <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter mb-6">
+            Real-time <span className="text-primary italic font-serif px-2">Console</span>
+         </h1>
+         <div className="flex flex-col items-center gap-4">
+            <p className="text-white/40 text-lg md:text-xl font-light max-w-2xl mx-auto">
+              Test PRs and watch MergeMind analyze them chunk-by-chunk.
+            </p>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/10 backdrop-blur-sm">
+              <div className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-emerald-500 shadow-glow-emerald/50 animate-pulse' : 'bg-red-500 shadow-glow-red/50'}`} />
+              <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+                 {socketConnected ? 'Connected to Backend' : 'Disconnected'}
+              </span>
+            </div>
+         </div>
       </motion.div>
 
       <div className="flex flex-col lg:flex-row gap-8 flex-1 overflow-hidden min-h-0">
@@ -259,18 +280,16 @@ export default function Dashboard() {
                </div>
 
                <div className="mt-8 pt-8 border-t border-white/5">
-                  <div className="flex items-center gap-2 text-white/40 text-xs font-bold uppercase tracking-widest mb-3">
-                     <Info className="w-3.5 h-3.5" />
-                     Your Endpoint:
+                  <div className="flex items-center gap-2 text-white/20 mb-3">
+                     <Link2 className="w-4 h-4" />
+                     <span className="text-[10px] uppercase font-black tracking-widest">Your Endpoint:</span>
                   </div>
-                  <div className="flex items-center gap-2 p-3.5 bg-black/40 rounded-xl border border-white/10 group/code">
-                     <code className="text-xs text-primary font-mono truncate flex-1">{webhookUrl}</code>
-                     <button 
-                       onClick={copyWebhook}
-                       className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-white"
-                     >
+                  <div className="flex items-center justify-between bg-black/40 border border-white/10 p-3 rounded-xl group relative overflow-hidden backdrop-blur-sm">
+                     <span className="text-xs font-mono text-white/40 truncate pr-4 relative z-10">{webhookUrl}</span>
+                     <button onClick={handleCopyWebhook} className="p-2 hover:bg-white/10 rounded-lg text-white/20 hover:text-white transition-all relative z-10">
                         {isCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                      </button>
+                     <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
                </div>
             </div>
@@ -279,84 +298,92 @@ export default function Dashboard() {
 
         {/* Right Column: Feed & Terminal */}
         <motion.div initial="hidden" animate="visible" variants={fadeUp} className="flex-1 flex flex-col gap-6 min-h-0">
-          <GlowCard tilt={true} className="flex-1 flex flex-col overflow-hidden min-h-0">
-             <div className="p-6 border-b border-white/5 flex items-center justify-between backdrop-blur-xl bg-white/[0.02]">
-                <div className="flex items-center gap-3">
-                   <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                     <TerminalIcon className="w-4 h-4 text-emerald-400" />
-                   </div>
-                   <h2 className="text-xl font-bold text-white tracking-tight">Live Analysis Stream</h2>
-                </div>
-                {progress > 0 && (
-                  <div className="flex items-center gap-4">
-                     <div className="hidden sm:block w-32 md:w-48 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progress}%` }}
-                          className="h-full bg-gradient-to-r from-primary via-indigo-400 to-emerald-400 relative"
-                        >
-                           <div className="absolute inset-0 bg-shimmer animate-shimmer" />
-                        </motion.div>
+            {/* Live Feed Column */}
+            <GlowCard className="lg:col-span-2 min-h-[600px] flex flex-col overflow-hidden">
+               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
+                  <div className="flex items-center gap-3">
+                     <div className="p-2 rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                        <Terminal className="w-5 h-5" />
                      </div>
-                     <span className="text-sm font-black text-emerald-400 font-mono tracking-tighter">{Math.round(progress)}%</span>
+                     <h2 className="text-xl font-bold text-white tracking-tight">Live Analysis Stream</h2>
                   </div>
-                )}
-             </div>
-
-             <div className="flex-1 p-6 overflow-y-auto terminal-window scan-line-overlay space-y-2 font-mono text-sm">
-                {logs.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-white/10">
-                     <TerminalIcon className="w-12 h-12 mb-4 opacity-10 animate-pulse" />
-                     <p className="text-lg font-bold tracking-tight">Waiting for webhook trigger...</p>
-                     <p className="text-xs font-mono">$ mergemind --watch --analyze</p>
+                  <div className="flex items-center gap-2">
+                     <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                     <span className="text-[10px] font-black text-white/40 uppercase tracking-widest italic">{status === 'processing' ? 'Analysing...' : 'Idle'}</span>
                   </div>
-                ) : (
-                  logs.map((log, i) => (
-                    <motion.div 
-                      key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="flex gap-3 leading-relaxed"
-                    >
-                      <span className="text-white/20 select-none">{String(i + 1).padStart(2, '0')}</span>
-                      <span className="text-emerald-400/80">$</span>
-                      <span className="text-white/80">{log}</span>
-                    </motion.div>
-                  ))
-                )}
-                <div ref={logEndRef} />
-             </div>
-          </GlowCard>
+               </div>
 
-          {/* Review Results */}
-          <AnimatePresence>
-            {currentReview && (
-              <motion.div 
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4"
-              >
-                {currentReview.issues.slice(0, 4).map((issue, idx) => (
-                  <GlowCard key={idx} tilt={true} glowColor={issue.severity === 'critical' ? 'rgba(239,68,68,0.15)' : 'rgba(79,70,229,0.15)'}>
-                    <div className="p-6">
-                       <div className="flex items-start justify-between mb-4">
-                          <div className={`px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest ${severityStyles[issue.severity]}`}>
-                             {issue.severity}
+               <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-[radial-gradient(circle_at_50%_0%,rgba(79,70,229,0.03),transparent)]">
+                  {status === 'idle' && logs.length === 0 && analyzedChunks.length === 0 && reviews.length === 0 ? (
+                     <div className="h-full flex flex-col items-center justify-center text-white/10 space-y-4">
+                        <Terminal className="w-16 h-16 opacity-5" />
+                        <p className="text-sm font-light italic">Waiting for review trigger...</p>
+                        <p className="text-[10px] uppercase tracking-widest font-black opacity-20">$ mergemind --watch --analyze</p>
+                     </div>
+                  ) : (
+                     <div className="space-y-6">
+                        {/* Status Messages */}
+                        {logs.map((log, i) => (
+                           <motion.div 
+                              key={`log-${i}`}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="flex items-start gap-3 font-mono text-sm group"
+                           >
+                              <span className="text-white/10 select-none min-w-[20px]">{String(i + 1).padStart(2, '0')}</span>
+                              <span className="text-white/20 select-none">$</span>
+                              <span className="text-white/60 group-last:text-primary transition-colors">{log}</span>
+                           </motion.div>
+                        ))}
+
+                        {/* Analysis Chunks */}
+                        {analyzedChunks.map((chunk, i) => (
+                           <motion.div
+                              key={`chunk-${i}`}
+                              initial={{ opacity: 0, scale: 0.98 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="rounded-2xl overflow-hidden border border-white/5 bg-black/40 shadow-2xl"
+                           >
+                              <div className="px-4 py-2 bg-white/5 border-b border-white/5 flex items-center justify-between">
+                                 <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Extracted Chunk {i + 1}</span>
+                              </div>
+                              <pre className="p-4 font-mono text-xs text-indigo-300/60 overflow-x-auto whitespace-pre-wrap">
+                                 {chunk.split('\n').slice(0, 15).join('\n')}
+                                 {chunk.split('\n').length > 15 && '\n... (truncated for feed)'}
+                              </pre>
+                           </motion.div>
+                        ))}
+
+                        {/* Review Feedback */}
+                        {reviews.length > 0 && (
+                          <div className="pt-8 space-y-4">
+                             <div className="flex items-center gap-3 mb-6">
+                                <Sparkles className="w-5 h-5 text-primary" />
+                                <h3 className="text-lg font-bold text-white tracking-tight">AI Generated Feedback</h3>
+                             </div>
+                             {reviews.map((rev, i) => (
+                                <ReviewCard key={`rev-${i}`} review={rev} />
+                             ))}
                           </div>
-                          <button className="text-white/20 hover:text-white transition-colors">
-                             <ArrowUpRight className="w-4 h-4" />
-                          </button>
-                       </div>
-                       <h3 className="text-white font-bold mb-2 tracking-tight line-clamp-1">{issue.title}</h3>
-                       <p className="text-white/40 text-xs leading-relaxed line-clamp-2 italic">{issue.description}</p>
-                    </div>
-                  </GlowCard>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+                        )}
+                        <div ref={logEndRef} />
+                     </div>
+                  )}
+               </div>
+
+               {/* Shimmering Progress Bar */}
+               <div className="h-2 w-full bg-white/[0.02] border-t border-white/5 relative overflow-hidden">
+                  <motion.div 
+                     className="h-full bg-gradient-to-r from-primary via-indigo-400 to-primary relative shadow-glow-primary"
+                     initial={{ width: 0 }}
+                     animate={{ width: `${progress}%` }}
+                     transition={{ type: "spring", damping: 20, stiffness: 50 }}
+                  >
+                     <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent)] animate-shimmer" />
+                  </motion.div>
+               </div>
+            </GlowCard>
+         </motion.div>
       </div>
     </div>
   );
