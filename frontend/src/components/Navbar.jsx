@@ -1,4 +1,5 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { BrainCircuit, Github, CodeSquare, LogOut } from 'lucide-react';
 
 export default function Navbar() {
