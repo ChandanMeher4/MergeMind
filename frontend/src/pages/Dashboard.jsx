@@ -40,7 +40,13 @@ export default function Dashboard() {
     const savedToken = localStorage.getItem('mergemind_token');
     if (savedToken) {
       try {
-        const payload = JSON.parse(atob(savedToken.split('.')[1]));
+        const base64Url = savedToken.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        
+        const payload = JSON.parse(jsonPayload);
         setUser(payload);
         // Set global auth header for this file's api instance
         api.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
